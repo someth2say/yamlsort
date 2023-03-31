@@ -18,16 +18,15 @@ import io.github.yamlpath.YamlExpressionParser;
 import io.github.yamlpath.YamlPath;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
-import picocli.CommandLine.Parameters;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.*;
@@ -37,21 +36,21 @@ import static java.util.Comparator.comparing;
 @Command(name = "yamlsort", mixinStandardHelpOptions = true)
 public class YamlSort implements Runnable {
 
-    @Parameters(paramLabel = "<file>", description = "The YAML file to sort documents from.", arity = "1")
+    @Option(paramLabel = "<file>", names = { "-i", "--input" }, description = "The YAML file to sort documents from. If not provided, STDIN is used.")
     Path path;
 
-    @Option(paramLabel = "<yamlPath>", description = "YamlPath expression to sort documents.", arity = "1..", names = { "-yp",
+    @Option(paramLabel = "<yamlPath>", description = "YamlPath expression to sort documents.", arity = "1..", names = { "-y",
             "-yamlpath" }, required = true)
     List<String> yamlPaths;
 
-    @Option(paramLabel = "sortKeys", description = "Sort document keys.", names = { "-k", "--sortKeys" }, negatable = true)
+    @Option(description = "Sort document keys.", names = { "-k", "--sortKeys" }, negatable = true)
     boolean sortKeys=true;
 
     @Override
     public void run() {
         try {
             // Split the input file in documents
-            String result = sortYamlFile(path, yamlPaths, sortKeys);
+            String result = path!=null?sortYamlFile(path, yamlPaths, sortKeys):sortYamlStream(System.in, yamlPaths, sortKeys);
             System.out.println(result);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -63,9 +62,14 @@ public class YamlSort implements Runnable {
         return sortYamlString(input, yamlPaths, sortKeys);
     }
 
+    public static String sortYamlStream(InputStream stream, List<String> yamlPaths, boolean sortKeys) throws IOException {
+        String input = new String(stream.readAllBytes());
+        return sortYamlString(input, yamlPaths, sortKeys);
+    }
+
     public static String sortYamlString(String input, List<String> yamlPaths, boolean sortKeys) {
         String[] docs = input.split("---" + System.lineSeparator());
-        List<YamlExpressionParser> parsers = Arrays.stream(docs).filter(Predicate.not(String::isBlank)).map(YamlPath::from)
+        List<YamlExpressionParser> parsers = Arrays.stream(docs).map(YamlPath::from)
                 .collect(Collectors.toList());
 
         // Reverse the order of the yamlPath expression to perform stable sort.
