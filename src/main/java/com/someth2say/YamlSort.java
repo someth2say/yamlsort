@@ -39,8 +39,8 @@ public class YamlSort implements Runnable {
     @Option(paramLabel = "<file>", names = { "-i", "--input" }, description = "The YAML file to sort documents from. If not provided, STDIN is used.")
     Path path;
 
-    @Option(paramLabel = "<yamlPath>", description = "YamlPath expression to sort documents.", arity = "1..", names = { "-y",
-            "-yamlpath" }, required = true)
+    @Option(paramLabel = "<yamlPath>", description = "YamlPath expression to sort documents.", arity = "1..",
+            names = { "-y","-yamlpath" }, required = true, split = ",")
     List<String> yamlPaths;
 
     @Option(description = "Sort document keys.", names = { "-k", "--sortKeys" }, negatable = true)

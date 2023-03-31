@@ -1,5 +1,6 @@
 ---
 kind: pets
+description: Animals in the house
 pets:
   - name: Sharona
     species: cat
@@ -7,6 +8,7 @@ pets:
     name: Azabache
 ---
 kind: people
+description: Humans in the house
 people:
   - name: Jordi
     gender: male
