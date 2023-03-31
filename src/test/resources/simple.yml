@@ -1,0 +1,15 @@
+---
+kind: pets
+pets:
+  - name: Sharona
+    species: cat
+  - species: cat
+    name: Azabache
+---
+kind: people
+people:
+  - name: Jordi
+    gender: male
+  - name: Cristina
+    gender: female
+
