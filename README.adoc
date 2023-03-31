@@ -1,0 +1,176 @@
+= yamlsort
+
+https://jbang.dev/[JBang] utility to sort a multi-document https://yaml.org/[YAML] file by using https://github.com/yaml-path/YamlPath[YamlPath].
+
+== Usage
+
+If you have `jbang` available in your system, just run:
+
+`jbang yamlsort@someth2say`
+
+We recommend "installing" the `yamlsort` command as a JBang application:
+
+`jbang app install yamlsort@someth2say`
+
+After running this command, open a new terminal session to start using `yamlsort`:
+
+`yamlsort --help`
+
+== Use cases
+
+YamlSort is built to sort https://yaml.org/spec/1.2.2/#91-documents[multi-document yaml files].
+It sort the documents in two dimensions:
+
+. Reorder documents given the values of YamlPath queries.
+. Reorder keys in each document in natural order.
+
+Let´s see some examples:
+
+=== Ordering documents
+
+Given the following multi-document file:
+
+.simple.yml
+----
+---
+order: 2
+zz: value
+---
+zz: text
+order: 1
+----
+
+You can reorder documents given the `order` field with `yamlsort -i simple.yml -y order`.
+
+The resulting document will be printed to the standard output:
+
+.yamlsort -i simple.yml -y order
+----
+---
+order: 1
+zz: text
+---
+order: 2
+zz: value
+----
+
+As you can see, the documents are now ordered by the value of the field `order`.
+Also, the keys in each document are ordered alphabetically.
+
+The order of both the documents and the fields is _stable_.
+This means that, if two elements A and B have the same ordering value, and A is placed before B in the original document,
+then the element A will be placed before B in the resulting document.
+
+If you want to retain the order of the keys in each document, disable key ordering with the `--no-sortKeys` option:
+
+.yamlsort -i simple.yml -y order --no-sortKeys
+----
+---
+zz: text
+order: 1
+---
+order: 2
+zz: value
+----
+
+
+=== Complex ordering
+
+In some cases, ordering based on a single value is not enough.
+
+The following example presents a more complex situation:
+
+.complex.yml
+----
+---
+kind: Deployment
+metadata:
+  name: alpha
+---
+kind: Service
+metadata:
+  name: beta
+---
+kind: Deployment
+metadata:
+  name: beta
+---
+kind: Service
+metadata:
+  name: alpha
+----
+
+As you can see, the documents in the ºcomplex.ymlº file not in order.
+Even if we apply ordering on the field `kind` or on the field `metadata.name`, the order of the documents would still be messed.
+
+The solution is ordering using both fields in a single pass.
+To do so, you can two options:
+
+* Provide multiple `-y` options with a single YamlPath query each: `yamlsort -i complex.yml -y "kind" -y "metadata.name"`
+* Provide a single `-y` option with multiple YamlPath queries, comma separated:  `yamlsort -i complex.yml -y "kind,metadata.name"`
+
+In both cases, the result is the same.
+
+Note that the order of the YamlPath queries is important.
+
+[cols="1,1"]
+|===
+a|
+.yamlsort -i complex.yml -y "kind,metadata.name"
+----
+---
+kind: Deployment
+metadata:
+  name: alpha
+---
+kind: Deployment
+metadata:
+  name: beta
+---
+kind: Service
+metadata:
+  name: beta
+---
+kind: Service
+metadata:
+  name: alpha
+----
+a|
+.yamlsort -i complex.yml -y "metadata.name,kind"
+----
+---
+kind: Deployment
+metadata:
+  name: alpha
+---
+kind: Service
+metadata:
+  name: alpha
+---
+kind: Deployment
+metadata:
+  name: beta
+---
+kind: Service
+metadata:
+  name: beta
+----
+|===
+
+=== Input
+
+To facilitate usage within Linux systems, if no `-i` option file is provided, then the standard input is used to read the YAML documents.
+This feature provide interesting use cases with other tools that generate or consume YAML files.
+
+.Piping from a previous command
+----
+cat myfile.yml | yamlsort -y kind
+----
+
+.Chaining results to the next command
+----
+yamlsort -i myfile.yml -y kind,metadata.name | yq '({"kind": .kind})'
+----
+
+
+

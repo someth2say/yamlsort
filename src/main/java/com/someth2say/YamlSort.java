@@ -33,17 +33,17 @@ import static com.fasterxml.jackson.databind.SerializationFeature.*;
 import static com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature.*;
 import static java.util.Comparator.comparing;
 
-@Command(name = "yamlsort", mixinStandardHelpOptions = true)
+@Command(name = "yamlsort", mixinStandardHelpOptions = true, version = "1.0.0-SNAPSHOT")
 public class YamlSort implements Runnable {
 
     @Option(paramLabel = "<file>", names = { "-i", "--input" }, description = "The YAML file to sort documents from. If not provided, STDIN is used.")
     Path path;
 
     @Option(paramLabel = "<yamlPath>", description = "YamlPath expression to sort documents.", arity = "1..",
-            names = { "-y","-yamlpath" }, required = true, split = ",")
+            names = { "-y","-yamlpath", "--yamlpath" }, required = true, split = ",")
     List<String> yamlPaths;
 
-    @Option(description = "Sort document keys.", names = { "-k", "--sortKeys" }, negatable = true)
+    @Option(description = "Sort document keys.", names = { "--sortKeys" }, negatable = true)
     boolean sortKeys=true;
 
     @Override
