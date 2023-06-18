@@ -19,14 +19,20 @@ After running this command, open a new terminal session to start using `yamlsort
 == Use cases
 
 YamlSort is built to sort https://yaml.org/spec/1.2.2/#91-documents[multi-document yaml files].
-It sort the documents in two dimensions:
+It sorts the documents in several dimensions:
 
-. Reorder documents given the values of YamlPath queries.
-. Reorder keys in each document in natural order.
+. Reorder documents given in a *given order*.
+. Reorder document keys in natural order.
+. Reorder collections of scalar values in natural order.
+. Reorder collections of maps in a *given order*.
+
+"*Given order*" means that elements are sorted in the natural order of a value extracted from each element by applying an YamlPath expression.
+The https://github.com/wwkimball/yamlpath/wiki/Segments-of-a-YAML-Path[YamlPath] expression must return a scalar value.
 
 Let´s see some examples:
 
-=== Ordering documents
+
+=== Ordering keys
 
 Given the following multi-document file:
 
@@ -40,7 +46,39 @@ zz: text
 order: 1
 ----
 
-You can reorder documents given the `order` field with `yamlsort -i simple.yml -y order`.
+Keys in both documents have different order.
+The default behaviour of YamlSort is sorting the keys of all the documents provided.
+Simply provide the documents to YamlSort to sort the keys: `yamlsort -i simple.yml`.
+
+.yamlsort -i simple.yml -y order
+----
+---
+order: 2
+zz: value
+---
+order: 1
+zz: text
+----
+
+Keys are now sorted in alphabetical (natual) order.
+
+If you want to retain the order of the keys in each document, disable key ordering with the `--no-sortKeys` option:
+
+=== Ordering documents
+
+Given the following multi-document file:
+
+.simple.yml
+----
+---
+order: 2
+zz: value
+---
+order: 1
+zz: text
+----
+
+You can sort documents given the value of the `order` field with `yamlsort -i simple.yml -y order`.
 
 The resulting document will be printed to the standard output:
 
@@ -54,25 +92,7 @@ order: 2
 zz: value
 ----
 
-As you can see, the documents are now ordered by the value of the field `order`.
-Also, the keys in each document are ordered alphabetically.
-
-The order of both the documents and the fields is _stable_.
-This means that, if two elements A and B have the same ordering value, and A is placed before B in the original document,
-then the element A will be placed before B in the resulting document.
-
-If you want to retain the order of the keys in each document, disable key ordering with the `--no-sortKeys` option:
-
-.yamlsort -i simple.yml -y order --no-sortKeys
-----
----
-zz: text
-order: 1
----
-order: 2
-zz: value
-----
-
+As you can see, the documents are now sorted by the value of the field `order`.
 
 === Complex ordering
 
@@ -100,8 +120,8 @@ metadata:
   name: alpha
 ----
 
-As you can see, the documents in the ºcomplex.ymlº file not in order.
-Even if we apply ordering on the field `kind` or on the field `metadata.name`, the order of the documents would still be messed.
+We want to sort the documents by *both* the `kind`  and the `metadata.name` field.
+Even If we sort by the value of each of those fields, the order of the documents would still be incorrect.
 
 The solution is ordering using both fields in a single pass.
 To do so, you can two options:
@@ -110,8 +130,6 @@ To do so, you can two options:
 * Provide a single `-y` option with multiple YamlPath queries, comma separated:  `yamlsort -i complex.yml -y "kind,metadata.name"`
 
 In both cases, the result is the same.
-
-Note that the order of the YamlPath queries is important.
 
 [cols="1,1"]
 |===
@@ -157,6 +175,154 @@ metadata:
 ----
 |===
 
+Note that the order of the YamlPath queries is important.
+
+=== Ordering lists of scalar values
+
+We learnt how to sort documents and keys.
+But YAML includes another construct that might require ordering: Lists
+
+.list_of_scalars.yml
+----
+---
+names:
+- Jordi
+- Cristina
+numbers:
+- 1
+- 3
+- 2
+----
+
+The option `-l` of YamlSort to sort lists of scalar values.
+This option accepts a YamlPath query to select the list to sort.
+In this example, if we want to sort the list of names: `yamlsort -i list_of_scalars.yml -l "names"`
+
+.yamlsort -i list_of_scalars.yml -l "names"
+----
+---
+names:
+  - Cristina
+  - Jordi
+numbers:
+  - 1
+  - 3
+  - 2
+----
+
+The list `names` is now sorted in alphabetical order, while the list `numbers` was left intact.
+
+You can order multiple lists in the same command by providing multiple YamlPath queries, either separated by comma, or by providing the `-l` option multiple times.
+
+.yamlsort -i list_of_scalars.yml -l "names,numbers"
+----
+---
+names:
+  - Cristina
+  - Jordi
+numbers:
+  - 1
+  - 2
+  - 3
+----
+
+Ordering lists applies to *all* documents provided.
+
+[IMPORTANT]
+If one of the YamlPath does not resolve to any value, then it is ignored for the document. +
+If the YamlPath resolves to an element that is not a list containing *only* scalar values, then an error message is shown (via the StdErr channel), and the YamlPath is ignored for the document.
+
+=== Ordering lists of maps
+
+Even ordering list of scalars is sometimes not enough.
+Observe the following example:
+
+.list_of_maps.yml
+----
+---
+people:
+  - gender: male
+    name: Jordi
+  - gender: female
+    name: Cristina
+pets:
+  - name: Sharona
+  - name: Azabache
+----
+
+In this example each element of the lists is a map, not a scalar.
+
+To sort a list, we need to provide with two pieces of information:
+
+. The list to sort.
+. The value (scalar) in each map to define the order.
+
+In YamlSort you can set the order of this list by providing the `-m` option.
+This option requires two YamlPath queries, one to select the list to sort, and another to select the value that defines the order.
+Provide both values in the same string, separated by `@@`. For clarity, you can also add spaces around the separator: `` @@ ``.
+
+As an example, to sort in  the `people` list by the value of the `name` field, use the following command: `yamlsort -i list_of_maps.yml -m "people @@ name"`
+
+.yamlsort -i list_of_maps.yml -m "people @@ name"
+----
+---
+people:
+  - gender: female
+    name: Cristina
+  - gender: male
+    name: Jordi
+pets:
+  - name: Sharona
+  - name: Azabache
+----
+
+[IMPORTANT]
+If one of the YamlPath does not resolve to any value, then it is ignored for the document. +
+If the YamlPath resolves to an element that is not a list containing *only* maps, then an error message is shown (via the StdErr channel), and the YamlPath is ignored for the document.
+
+=== Stable sort
+
+All sort operations performed by YamlSort are _stable_
+
+This means that, if two elements A and B have the same ordering value, and A is placed before B before sorting,
+then the element A will be placed before B after sorting.
+
+For example, given the following documents:
+
+.stable.yml
+----
+---
+name: Cristina
+orientation: North
+---
+name: Jordi
+orientation: North
+---
+name: Cristina
+orientation: South
+---
+name: Jordi
+orientation: South
+----
+
+When sorting the documents by the `name` field, stable sort ensures that the `orientation` field retains the original order.
+
+.yamlsort -i stable.yml -d name
+----
+---
+name: Cristina
+orientation: North
+---
+name: Cristina
+orientation: South
+---
+name: Jordi
+orientation: North
+---
+name: Jordi
+orientation: South
+----
+
 === Input
 
 To facilitate usage within Linux systems, if no `-i` option file is provided, then the standard input is used to read the YAML documents.
@@ -167,10 +333,10 @@ This feature provide interesting use cases with other tools that generate or con
 cat myfile.yml | yamlsort -y kind
 ----
 
+YamlSort does not write the output results into any file, but into the StdOut channel.
+This enables chaining the output to other tools (or even the same YamlSort).
+
 .Chaining results to the next command
 ----
 yamlsort -i myfile.yml -y kind,metadata.name | yq '({"kind": .kind})'
 ----
-
-
-
